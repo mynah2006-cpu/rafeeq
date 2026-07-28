@@ -1,0 +1,1538 @@
+================================================================================
+RAFEEQ - AI PATIENT COMPANION
+COMPLETE PROJECT DOCUMENTATION
+================================================================================
+
+Prepared for: Kenz Project
+File format: Plain Text (.txt)
+Covers: Libraries, Code, Requirements, Templates, Concept, Features, Bugs
+
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+
+1.  PROJECT CONCEPT AND OVERVIEW
+2.  SYSTEM REQUIREMENTS
+3.  ENVIRONMENT CONFIGURATION (.env)
+4.  TECH STACK SUMMARY
+5.  LIBRARIES AND DEPENDENCIES (DETAILED)
+6.  PROJECT FOLDER STRUCTURE
+7.  ARCHITECTURE OVERVIEW
+8.  FILE-BY-FILE CODE BREAKDOWN
+    8.1   index.html
+    8.2   src/main.tsx
+    8.3   src/App.tsx
+    8.4   src/types/index.ts
+    8.5   src/store/faceStore.ts
+    8.6   src/store/voiceStore.ts
+    8.7   useVoiceOrchestrator.ts
+    8.8   useSpeechRecognition.ts
+    8.9   useSpeechSynthesis.ts
+    8.10  llmEngine.ts
+    8.11  simpleResponseEngine.ts
+    8.12  emergencyDetector.ts
+    8.13  RafeeqFace.tsx
+    8.14  Eyes.tsx / Eyebrows.tsx / Mouth.tsx
+    8.15  springConfig.ts
+    8.16  expressionAnimations.ts
+    8.17  useFaceAnimations.ts
+    8.18  useEyeTracking.ts
+    8.19  Dashboard.tsx
+    8.20  EmergencyOverlay.tsx
+    8.21  ParticleBackground.tsx
+    8.22  AudioVisualizer.tsx
+    8.23  SplashOverlay.tsx
+    8.24  StatusBar.tsx
+    8.25  TranscriptDisplay.tsx
+    8.26  PrivacyIndicator.tsx
+    8.27  soundEffects.ts
+    8.28  tokens.css / global.css / animations.css
+9.  VOICE PIPELINE - FULL FLOW DIAGRAM
+10. FACE STATE MACHINE
+11. LLM ENGINE ROUTING LOGIC
+12. CSS DESIGN SYSTEM
+13. BUILD CONFIGURATION
+14. FEATURES LIST
+15. POTENTIAL BUGS AND KNOWN ISSUES
+16. SECURITY NOTES
+17. DEPLOYMENT NOTES
+
+
+================================================================================
+1. PROJECT CONCEPT AND OVERVIEW
+================================================================================
+
+NAME: Rafeeq (Arabic: rafeeq = companion / friend)
+
+WHAT IS IT:
+Rafeeq is a web-based AI patient companion for hospital and healthcare settings.
+Target users:
+  - Children (frightened or lonely in hospitals)
+  - Elderly patients (difficulty with complex technology)
+
+The app presents as an animated talking AI face on a tablet/kiosk in a patient
+room. Patients speak naturally; Rafeeq responds with voice. Voice-first design
+requires no reading or typing ability.
+
+There is also a STAFF DASHBOARD for nurses/doctors showing patient wellbeing
+summaries, pain levels, mood data, and critical alerts from AI conversations.
+
+DUAL VIEW ARCHITECTURE:
+  1. COMPANION MODE - animated face, mic button, conversation transcript.
+     Dark background, neon cyan color scheme. For patients.
+  2. STAFF DASHBOARD - clinical data: patient table, alerts, pain charts.
+     For hospital staff only.
+
+Both views are toggled with a single button in the top-right corner.
+
+PHASE STATUS:
+Code comments say 'Phase 2: Voice Pipeline Active'. Phase 2 means the full
+STT -> LLM -> TTS pipeline is wired and operational.
+
+
+================================================================================
+2. SYSTEM REQUIREMENTS
+================================================================================
+
+RUNTIME (Browser):
+  - Chrome 33+, Edge 79+, or Safari 14.1+ (Web Speech API required)
+  - Microphone access permission required
+  - JavaScript enabled
+  - Audio output device (speakers/headphones) for TTS
+
+DEVELOPMENT:
+  - Node.js 18+ (LTS recommended)
+  - npm 9+
+  - Internet connection (Google Fonts + LLM API calls)
+
+BROWSER COMPATIBILITY:
+  Web Speech API is NOT supported in Firefox. The app handles this gracefully
+  by disabling the mic button and showing an error message. Face animations
+  and the dashboard work in all browsers.
+
+SUPPORTED LANGUAGES:
+  - English (en-US) - primary
+  - Arabic (ar/ar-SA) - auto-detected from speech character content
+
+
+================================================================================
+3. ENVIRONMENT CONFIGURATION (.env)
+================================================================================
+
+Vite embeds VITE_* variables into the client JavaScript bundle at build time.
+
+CURRENT .env CONTENTS:
+  VITE_LLM_API_KEY=02d7cd1f5d3c4b80bb21afbec2e5e7d6.tojdKuHMwJ3Jl3Yv
+  VITE_LLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+  VITE_LLM_MODEL=glm-4-flash
+  VITE_ELEVENLABS_API_KEY=  [EMPTY - ElevenLabs TTS disabled]
+  VITE_ELEVENLABS_VOICE_ID=pNInz6obpgDQGcFmaJgB
+  VITE_SHOW_DEV_TOOLS=false
+
+VARIABLE DESCRIPTIONS:
+
+  VITE_LLM_API_KEY
+    API key for OpenAI-compatible LLM. Currently: Zhipu AI (GLM-4-Flash).
+    If set, this provider is called first.
+
+  VITE_LLM_BASE_URL
+    Base URL for the OpenAI-compatible API.
+    Zhipu AI: https://open.bigmodel.cn/api/paas/v4
+    Can swap to DeepSeek, local Ollama, or any compatible API.
+
+  VITE_LLM_MODEL
+    Model identifier. 'glm-4-flash' is Zhipu's fast affordable model.
+
+  VITE_GEMINI_API_KEY
+    Google Gemini API key (used if VITE_LLM_API_KEY is empty).
+    Must start with 'AIzaSy' and be 30+ chars.
+
+  VITE_ELEVENLABS_API_KEY
+    ElevenLabs TTS API key. Empty = falls back to browser Web Speech API.
+    When set: cinematic voice quality with real audio-driven lip-sync.
+
+  VITE_ELEVENLABS_VOICE_ID
+    Voice ID from ElevenLabs. Default: pNInz6obpgDQGcFmaJgB (Adam - calm male)
+    .env.example also shows: 21m00Tcm4TlvDq8ikWAM (Rachel)
+
+  VITE_SHOW_DEV_TOOLS
+    'true' shows StatusBar dev panel. Also auto-shown in Vite DEV mode.
+
+SECURITY WARNING:
+  The .env file contains a REAL Zhipu AI API key. Vite embeds ALL VITE_*
+  variables into the client JavaScript bundle. Anyone inspecting the built JS
+  files can extract this key. Rotate it before publishing to any public repo.
+
+
+================================================================================
+4. TECH STACK SUMMARY
+================================================================================
+
+  Framework:    React 19 (concurrent features)
+  Language:     TypeScript 6
+  Build Tool:   Vite 8
+  Styling:      TailwindCSS 4 + CSS Modules + CSS Custom Properties
+  Animations:   Framer Motion 12
+  Icons:        Lucide React 1.25
+  Charts:       Recharts 3
+  State Mgmt:   Zustand 5
+  Fonts:        IBM Plex Sans + IBM Plex Sans Arabic (Google Fonts)
+  STT:          Web Speech API (browser-native)
+  TTS:          ElevenLabs API (premium) / Web Speech API (fallback)
+  LLM:          Zhipu GLM-4-Flash (primary) / Pollinations free (fallback)
+  Audio FX:     Web Audio API (browser-native)
+  Linting:      oxlint
+
+
+================================================================================
+5. LIBRARIES AND DEPENDENCIES (DETAILED)
+================================================================================
+
+--- PRODUCTION DEPENDENCIES ---
+
+REACT (^19.2.7)
+  The core UI framework. Component-based with virtual DOM.
+  Usage: Every UI element is a React component.
+  Key APIs: useState, useEffect, useRef, useCallback, createRoot, StrictMode
+  Note: StrictMode renders twice in dev to catch side effects.
+
+REACT-DOM (^19.2.7)
+  React's browser DOM renderer.
+  Usage: createRoot(element).render(<App />) in main.tsx
+
+FRAMER MOTION (^12.42.2)
+  Production-ready animation library. Spring physics, declarative animations.
+  Usage:
+    motion.svg  - Face SVG breathing scale animation
+    motion.div  - EmergencyOverlay fade + spring entry
+    motion.div  - TranscriptDisplay chat bubbles slide in
+    motion.svg  - Emergency alert icon infinite pulse
+    AnimatePresence - Mount/unmount transitions (interim text bar)
+  Key APIs: motion.*, AnimatePresence, animate, initial, exit, transition
+
+LUCIDE-REACT (^1.25.0)
+  SVG icon library as React components. Open-source fork of Feather Icons.
+  Icons used:
+    LayoutDashboard, UserRound (view toggle button in App.tsx)
+    Activity, Users, BellRing, MessageSquare (dashboard summary cards)
+    Bell, Settings (sidebar nav)
+    X (close modal), ChevronRight (expand patient row)
+    TrendingUp (pain chart), Frown, Smile, Meh, Moon (patient mood icons)
+
+RECHARTS (^3.9.2)
+  Charting library built on D3, designed for React. SVG-based, animated.
+  Usage: Patient detail modal - LineChart showing 24h pain trend.
+  Components: LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+              ResponsiveContainer
+
+ZUSTAND (^5.0.14)
+  Lightweight hook-based state management. Zero boilerplate, no Provider.
+  Usage:
+    faceStore.ts  - Face animation state (faceState, blinking, mouth,
+                    pupilTarget, breathScale, isMicActive)
+    voiceStore.ts - Voice state (isEmergency, voiceError, conversation,
+                    lastResponse)
+  Why not Context: Multiple unrelated components need these states.
+  Zustand selectors prevent unnecessary re-renders unlike Context.
+
+--- DEV DEPENDENCIES ---
+
+VITE (^8.1.1)
+  Next-generation build tool. Native ES modules in dev, Rollup for production.
+  Scripts: npm run dev (port 5173), npm run build (->dist/), npm run preview
+  Special: vite.config.ts proxies /api/pollinations -> text.pollinations.ai
+           This avoids CORS issues when calling free Pollinations AI in dev.
+
+TYPESCRIPT (~6.0.2)
+  Typed superset of JavaScript. All files are .ts or .tsx.
+  Types defined in src/types/index.ts (FaceState, ConversationMessage, etc.)
+
+@VITEJS/PLUGIN-REACT (^6.0.3)
+  Vite plugin enabling React JSX and Fast Refresh. Required for .tsx files.
+
+TAILWINDCSS (^4.3.3)
+  Utility-first CSS framework. v4 uses CSS-first config (@import tailwindcss).
+  Used inline in Dashboard.tsx. Less used in Companion mode (CSS Modules preferred).
+
+@TAILWINDCSS/POSTCSS (^4.3.3)
+  PostCSS plugin required to process Tailwind CSS v4 during build.
+
+POSTCSS (^8.5.20)
+  CSS transformation tool. Config: postcss.config.js uses @tailwindcss/postcss
+  and autoprefixer.
+
+AUTOPREFIXER (^10.5.4)
+  PostCSS plugin that adds vendor prefixes (-webkit-, -moz-) automatically.
+
+OXLINT (^1.71.0)
+  Extremely fast JavaScript/TypeScript linter written in Rust.
+  Run: npm run lint | Config: .oxlintrc.json
+
+@TYPES/* PACKAGES:
+  @types/node (^24.13.2): Node.js types for build config files
+  @types/react (^19.2.17): React component and hook types
+  @types/react-dom (^19.2.3): React DOM types
+
+BROWSER-NATIVE APIs (no npm package):
+  Web Speech API: window.SpeechRecognition / window.webkitSpeechRecognition (STT)
+                  window.speechSynthesis (TTS)
+  Web Audio API:  AudioContext, OscillatorNode, GainNode, AnalyserNode,
+                  AudioBuffer (sound effects + ElevenLabs lip-sync)
+  Canvas 2D API:  ParticleBackground.tsx animated particle field
+  requestAnimationFrame: particle animation, breathing, mouth, eye tracking
+
+
+================================================================================
+6. PROJECT FOLDER STRUCTURE
+================================================================================
+
+kenz project/
+|-- .env                     Environment variables (active API keys)
+|-- .env.example             Template for environment variables
+|-- .gitignore               Git ignore rules
+|-- .oxlintrc.json           Oxlint configuration
+|-- README.md                Project readme
+|-- index.html               HTML entry point
+|-- package.json             npm package manifest
+|-- package-lock.json        Locked dependency versions
+|-- postcss.config.js        PostCSS configuration
+|-- tailwind.config.js       Tailwind configuration
+|-- tsconfig.json            TypeScript root config
+|-- tsconfig.app.json        TypeScript app config
+|-- tsconfig.node.json       TypeScript node config (build scripts)
+|-- vite.config.ts           Vite build/dev configuration
+|-- dist/                    Production build output (auto-generated)
+|-- node_modules/            Installed dependencies (auto-generated)
+|-- public/                  Static assets served as-is
+|-- src/
+    |-- App.module.css       CSS Module for App component
+    |-- App.tsx              Root application component
+    |-- index.css            Minimal CSS import file
+    |-- main.tsx             Application entry point
+    |-- assets/              Static asset imports
+    |-- features/
+    |   |-- dashboard/
+    |   |   |-- Dashboard.tsx       Staff-facing clinical dashboard
+    |   |-- emergency/
+    |   |   |-- EmergencyOverlay.module.css
+    |   |   |-- EmergencyOverlay.tsx     Full-screen emergency alert
+    |   |-- face/
+    |   |   |-- animations/
+    |   |   |   |-- expressionAnimations.ts  Expression shape data per state
+    |   |   |   |-- useEyeTracking.ts        Mouse/touch pupil tracking
+    |   |   |   |-- useFaceAnimations.ts     Blink, breath, speaking mouth
+    |   |   |-- components/
+    |   |       |-- Eyebrows.tsx             Eyebrow SVG paths
+    |   |       |-- Eyes.tsx                 Eye circles with pupils
+    |   |       |-- Mouth.tsx                Mouth bezier curve
+    |   |       |-- RafeeqFace.module.css    Face styles
+    |   |       |-- RafeeqFace.tsx           Root face SVG component
+    |   |       |-- springConfig.ts          Framer Motion spring presets
+    |   |-- voice/
+    |       |-- components/
+    |       |   |-- MicButton.module.css
+    |       |   |-- MicButton.tsx            Microphone toggle button
+    |       |   |-- PrivacyIndicator.module.css
+    |       |   |-- PrivacyIndicator.tsx     'Mic active' privacy badge
+    |       |   |-- TranscriptDisplay.module.css
+    |       |   |-- TranscriptDisplay.tsx    Chat bubbles + interim text
+    |       |-- hooks/
+    |       |   |-- useSpeechRecognition.ts  Web Speech API STT wrapper
+    |       |   |-- useSpeechSynthesis.ts    ElevenLabs + Web Speech TTS
+    |       |   |-- useVoiceOrchestrator.ts  Master voice pipeline hook
+    |       |-- emergencyDetector.ts         Keyword-based emergency check
+    |       |-- llmEngine.ts                 Multi-provider AI engine
+    |       |-- simpleResponseEngine.ts      Offline fallback responses
+    |-- shared/
+    |   |-- components/
+    |   |   |-- AudioVisualizer.tsx          Microphone audio bars
+    |   |   |-- ParticleBackground.tsx       Canvas particle field
+    |   |   |-- SplashOverlay.module.css
+    |   |   |-- SplashOverlay.tsx            First-load splash screen
+    |   |   |-- StatusBar.module.css
+    |   |   |-- StatusBar.tsx                Dev face-state control panel
+    |   |-- utils/
+    |       |-- soundEffects.ts              Web Audio API tone generator
+    |-- store/
+    |   |-- faceStore.ts                     Zustand face animation state
+    |   |-- voiceStore.ts                    Zustand voice/conversation state
+    |-- styles/
+    |   |-- animations.css                   CSS keyframe animations
+    |   |-- global.css                       Global reset + base styles
+    |   |-- tokens.css                       CSS design tokens
+    |-- types/
+        |-- index.ts                         Shared TypeScript types
+        |-- speech.d.ts                      Web Speech API declarations
+
+
+================================================================================
+7. ARCHITECTURE OVERVIEW
+================================================================================
+
+FEATURE-BASED ARCHITECTURE:
+  1. voice     - STT + LLM + TTS pipeline
+  2. face      - Animated SVG companion face
+  3. dashboard - Staff clinical view
+  4. emergency - Emergency detection and overlay
+
+SHARED LAYER:
+  AudioVisualizer, ParticleBackground, SplashOverlay, StatusBar,
+  soundEffects - shared across features.
+
+STATE MANAGEMENT:
+  Two Zustand stores. No React Context, no prop drilling.
+  faceStore:  all face animation properties
+  voiceStore: voice pipeline state (conversation, errors, emergency)
+
+DATA FLOW IN COMPANION MODE:
+  User speaks
+  -> Web Speech API transcribes audio
+  -> useSpeechRecognition emits final transcript
+  -> useVoiceOrchestrator receives it
+  -> emergencyDetector checks for phrases (synchronous, zero latency)
+  -> IF emergency: EmergencyOverlay + TTS emergency message
+  -> ELSE: setFaceState('thinking') + getGeminiResponse() [async]
+  -> llmEngine: Zhipu -> Pollinations fallback -> offline fallback
+  -> { text, positive } response
+  -> speak(text), face animates, mouth syncs
+  -> setFaceState('idle') after speech
+
+DASHBOARD DATA FLOW:
+  ALL dashboard data is MOCK (static constants). No real backend.
+  Pain charts use hardcoded data. Alerts are hardcoded.
+
+
+================================================================================
+8. FILE-BY-FILE CODE BREAKDOWN
+================================================================================
+
+------------------------------------------------------------------------
+8.1 index.html (835 bytes, 23 lines)
+------------------------------------------------------------------------
+HTML shell. Body contains only <div id='root'></div>.
+Key elements:
+  meta charset=UTF-8: supports Arabic
+  meta name=description: 'Rafeeq - AI Patient Companion for children...'
+  meta name=theme-color: #0d1117 (dark chrome on mobile)
+  title: 'Rafeeq | AI Patient Companion'
+  Google Fonts preconnect for faster loading
+  IBM Plex Sans + IBM Plex Sans Arabic (weights 300/400/500/600)
+  script type=module src=/src/main.tsx: Vite app entry
+
+------------------------------------------------------------------------
+8.2 src/main.tsx (379 bytes, 15 lines)
+------------------------------------------------------------------------
+React entry point.
+  1. Imports global.css (-> tokens.css + tailwindcss)
+  2. Imports animations.css for CSS keyframes
+  3. Gets #root element, throws Error if not found
+  4. createRoot(element).render(<StrictMode><App /></StrictMode>)
+NOTE: StrictMode renders TWICE in dev to catch side effects.
+      May cause double API calls or audio glitches in dev mode.
+
+------------------------------------------------------------------------
+8.3 src/App.tsx (5,732 bytes, 157 lines)
+------------------------------------------------------------------------
+Root component. Manages view toggle and all top-level rendering.
+
+STATE:
+  view: 'companion' | 'dashboard' (local useState, default='dashboard')
+
+FROM STORES:
+  faceState  - drives ambient glow data-state CSS attribute
+  voiceError - displayed as error text
+
+VOICE PIPELINE: useVoiceOrchestrator() provides:
+  interim, transcript, isListening, isSpeaking,
+  isUnsupported, toggleListening
+
+TOP-RIGHT TOGGLE BUTTON:
+  Fixed button, z-50, glass style with backdrop blur
+  Icons: LayoutDashboard (->Staff Dashboard) / UserRound (->Companion)
+
+COMPANION VIEW LAYOUT (top to bottom):
+  1. SplashOverlay - first-load fade-in
+  2. ParticleBackground - canvas, always behind
+  3. Ambient glow div - color shifts per faceState via data-state attr
+  4. PrivacyIndicator - 'Mic Active' badge when isListening
+  5. EmergencyOverlay - conditional full-screen red overlay
+  6. <main>:
+       header: 'r' Arabic logo + 'Rafeeq' title + 'AI Patient Companion'
+       stage:  RafeeqFace + state label (key=faceState forces re-mount)
+       transcriptRegion: TranscriptDisplay
+       AudioVisualizer
+       voiceSection: MicButton + error/unsupported messages
+       footer: StatusBar (dev) + dev hint text
+
+STATE_LABELS dictionary:
+  idle      -> 'Tap the mic to speak'
+  listening -> 'I'm listening...'
+  thinking  -> 'Let me think...'
+  speaking  -> 'Speaking...'
+  happy     -> 'That's wonderful!'
+  concerned -> 'I'm here for you.'
+  surprised -> 'Oh! Tell me more.'
+  sleeping  -> 'Resting quietly...'
+
+------------------------------------------------------------------------
+8.4 src/types/index.ts (1,847 bytes, 56 lines)
+------------------------------------------------------------------------
+All shared TypeScript types:
+
+  FaceState = 'idle'|'listening'|'thinking'|'speaking'|
+              'happy'|'concerned'|'surprised'|'sleeping'
+
+  PupilTarget = { x: number; y: number } (range: -1 to 1)
+
+  MessageRole = 'patient' | 'assistant' | 'system'
+
+  ConversationMessage = {
+    id: string
+    role: MessageRole
+    content: string
+    timestamp: number  (Unix milliseconds)
+    emotion?: FaceState  (optional)
+  }
+
+  AppLanguage = 'en' | 'ar'
+
+  SpeechError = 'not-allowed'|'no-speech'|'audio-capture'|
+                'network'|'aborted'|'unsupported'|'unknown'
+  (maps directly to SpeechRecognitionErrorEvent.error codes)
+
+  EmergencyLevel = 'none' | 'detected'
+
+speech.d.ts: Ambient declarations for Web Speech API interfaces
+  (SpeechRecognition, SpeechRecognitionEvent, SpeechRecognitionErrorEvent)
+  not yet in standard TypeScript DOM lib.
+
+------------------------------------------------------------------------
+8.5 src/store/faceStore.ts (2,093 bytes, 67 lines)
+------------------------------------------------------------------------
+Zustand store - SINGLE SOURCE OF TRUTH for face animation.
+Everything that changes the face writes here.
+
+FIELDS + DEFAULTS:
+  faceState:    FaceState = 'idle'
+  isBlinking:   boolean = false
+  mouthOpenness: number = 0  (0=closed, 1=open; clamped in setter)
+  pupilTarget:  {x:0, y:0}  (normalized -1 to 1)
+  breathScale:  number = 1  (oscillates 1.000 to 1.016)
+  thinkingAngle: number = 0  (wraps at 360 in setter)
+  isMicActive:  boolean = false
+
+All fields have setters. mouthOpenness clamped: Math.max(0,Math.min(1,v))
+thinkingAngle wraps: value % 360
+
+WRITERS:
+  useVoiceOrchestrator - setFaceState through pipeline
+  useFaceAnimations    - setIsBlinking, setBreathScale, setMouthOpenness
+  useEyeTracking       - setPupilTarget
+  StatusBar (dev)      - manual faceState preview
+
+------------------------------------------------------------------------
+8.6 src/store/voiceStore.ts (1,678 bytes, 56 lines)
+------------------------------------------------------------------------
+Zustand store for cross-cutting voice state.
+Transient state (isListening, transcript) stays in hooks.
+
+FIELDS + DEFAULTS:
+  isEmergency:  boolean = false
+  voiceError:   string | null = null
+  conversation: ConversationMessage[] = []
+  lastResponse: string = ''
+
+ACTIONS:
+  setIsEmergency(boolean)
+  dismissEmergency()  ->  isEmergency = false
+  setVoiceError(string | null)
+  addMessage(omit<id,timestamp>)  ->  id='msg-N', timestamp=Date.now()
+  clearConversation()
+  setLastResponse(string)
+
+READERS: EmergencyOverlay, App.tsx, TranscriptDisplay, useVoiceOrchestrator
+
+------------------------------------------------------------------------
+8.7 useVoiceOrchestrator.ts (8,690 bytes, 249 lines)
+------------------------------------------------------------------------
+THE MASTER HOOK. Wires STT -> Emergency Check -> LLM -> TTS.
+
+DEPENDENCIES:
+  useSpeechRecognition, useSpeechSynthesis, faceStore, voiceStore,
+  emergencyDetector, llmEngine, soundEffects
+
+CONSTANTS:
+  THINKING_DELAY_MS = 0 (no artificial delay)
+
+CONTINUOUS MODE:
+  isActiveRef (useRef) - tracks if session is active.
+  User presses mic ONCE to start, ONCE to stop.
+  Auto-restarts listening 600ms after each response ends.
+
+MOUTH SYNC via handleWordBoundary:
+  Called on each word event. Every 4th word opens wider (emphasis).
+  setTimeout decays openness naturally.
+
+5 useEffect HOOKS IN ORDER:
+
+  1. isListening effect:
+     isListening=true -> faceState='listening', isMicActive=true,
+     voiceError=null, playStartSound()
+
+  2. isSpeaking effect:
+     isSpeaking=true  -> faceState='speaking'
+     isSpeaking=false AND !isListening -> after 300ms:
+       faceState='idle', mouthOpenness=0, isMicActive=false
+
+  3. Error effect:
+     error -> map to SPEECH_ERROR_MESSAGES -> setVoiceError(msg)
+     faceState='concerned', isMicActive=false, playErrorSound()
+
+  4. TRANSCRIPT EFFECT (core processing loop):
+     transcript arrives -> setIsMicActive(false)
+     addMessage({role:'patient', content:transcript})
+     detectEmergency(transcript)  [SYNCHRONOUS - no network]
+       IF emergency:
+         setIsEmergency(true), faceState='concerned'
+         playEmergencySound()
+         addMessage(EMERGENCY_RESPONSE)
+         speak(EMERGENCY_RESPONSE) -> RETURN
+       ELSE:
+         faceState='thinking', playThinkingSound()
+         [async] getGeminiResponse(transcript, conversation)
+         setLastResponse(text), addMessage({role:'assistant',...})
+         If positive: faceState='happy', wait 400ms, speak(text)
+         If not positive: speak(text) immediately
+
+  5. Auto-restart effect:
+     !isListening AND !isSpeaking AND !error AND isActiveRef.current
+     -> setTimeout 600ms -> startListening()
+
+TOGGLE FUNCTION:
+  ON:  isActiveRef=true, startListening()
+  OFF: isActiveRef=false, stopListening(), cancelSpeech(),
+       faceState='idle', mouthOpenness=0, isMicActive=false
+
+RETURNS: {interim, transcript, isListening, isSpeaking, isUnsupported, toggleListening}
+
+------------------------------------------------------------------------
+8.8 useSpeechRecognition.ts (4,814 bytes, 153 lines)
+------------------------------------------------------------------------
+Wraps browser Web Speech API SpeechRecognition.
+
+BROWSER DETECTION:
+  Checks window.SpeechRecognition and window.webkitSpeechRecognition.
+  null if unsupported (isSupported=false).
+
+CONFIGURATION:
+  rec.continuous = false      (one utterance at a time - more reliable)
+  rec.interimResults = true   (live partial text)
+  rec.lang = 'en-US'
+  rec.maxAlternatives = 1
+
+EVENT HANDLERS:
+  onstart: isListening=true, clear error/transcript/interim
+  onresult: separate final vs interim; setTranscript on final, setInterim on interim
+  onerror: map via ERROR_MAP; 'aborted' is ignored (intentional stop)
+  onend: isListening=false, interim=''
+
+Recognition instance created ONCE in useEffect, stored in ref.
+
+ERROR_MAP:
+  'not-allowed'   -> 'not-allowed'
+  'no-speech'     -> 'no-speech'
+  'audio-capture' -> 'audio-capture'
+  'network'       -> 'network'
+  'aborted'       -> ignored (user stopped intentionally)
+  else            -> 'unknown'
+
+RETURNS: {transcript, interim, isListening, isSupported, error,
+          startListening, stopListening}
+
+------------------------------------------------------------------------
+8.9 useSpeechSynthesis.ts (7,143 bytes, 224 lines)
+------------------------------------------------------------------------
+TTS with two tiers:
+  Tier 1 (premium): ElevenLabs API + real audio-driven lip-sync
+  Tier 2 (fallback): Browser Web Speech API + word boundary events
+
+VOICE SELECTION (Web Speech, priority order):
+  1. Microsoft natural voices (Edge/Windows)
+  2. Google voices (Chrome)
+  3. Named: Daniel, Alex, Tom, Fred, Aria, Samantha, Victoria
+  4. First available voice matching language
+  Arabic: filters by lang.startsWith('ar')
+
+LANGUAGE DETECTION:
+  Count Arabic chars (U+0600-U+06FF).
+  If >30% of text is Arabic chars -> use 'ar' voice/language.
+
+ELEVENLABS INTEGRATION:
+  POST https://api.elevenlabs.io/v1/text-to-speech/{voiceId}
+  Model: eleven_multilingual_v2 (English + Arabic)
+  Settings: stability=0.65, similarity_boost=0.75, style=0.25,
+            use_speaker_boost=true
+  Process:
+    1. Get audio blob from API
+    2. Decode with AudioContext.decodeAudioData()
+    3. Create AnalyserNode (fftSize=256, smoothing=0.6)
+    4. RAF loop reads frequency bins 2-50 (speech range ~200-4000Hz)
+    5. avg > 15 -> fire onBoundary() -> drives mouth openness
+  TRUE lip-sync from actual audio - not just word boundary events.
+  AbortController enables cancellation mid-speech.
+
+WEB SPEECH FALLBACK settings:
+  rate=0.82, pitch=1.04, volume=1.0
+  Word boundary events fire onBoundary()
+
+cancelSpeech(): abort ElevenLabs + window.speechSynthesis.cancel()
+
+RETURNS: {speak, cancelSpeech, isSpeaking, isSupported}
+
+------------------------------------------------------------------------
+8.10 llmEngine.ts (7,800 bytes, 227 lines)
+------------------------------------------------------------------------
+Universal LLM routing engine. Three providers with auto-fallback.
+
+PROVIDER FLAGS (evaluated at module load):
+  USE_OPENAI = LLM_API_KEY.length>0 AND LLM_BASE_URL.length>0
+  USE_GEMINI = !USE_OPENAI AND GEMINI_KEY.startsWith('AIzaSy') AND len>30
+  Current: USE_OPENAI=true (Zhipu key set), USE_GEMINI=false
+
+SYSTEM PROMPT defines Rafeeq personality:
+  - Fun, warm, intelligent AI companion
+  - Dynamic conversational style
+  - Supports Arabic and English
+  - Shows emotions and curiosity
+  REQUIRED OUTPUT FORMAT:
+    { 'response': 'message text', 'positive': true/false }
+  'positive' flag determines if face becomes happy or stays neutral.
+
+PROVIDER 1 - callOpenAI(transcript, history):
+  POST {LLM_BASE_URL}/chat/completions
+  Compatible with ANY OpenAI-format API (Zhipu, DeepSeek, Ollama...)
+  Last 15 messages | temperature=0.9, top_p=0.95, max_tokens=2048
+  Strips markdown fences from response | JSON parse with raw text fallback
+
+PROVIDER 2 - callGemini(transcript, history):
+  POST generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash
+  system_instruction field | response_mime_type='application/json'
+  Last 15 messages
+
+PROVIDER 3 - callPollinations(transcript, history):
+  POST /api/pollinations/ [Vite proxy -> text.pollinations.ai]
+  FREE, no API key | model='openai' | last 10 messages
+
+ROUTING in getGeminiResponse():
+  try {
+    if USE_OPENAI: callOpenAI() -> on fail -> callPollinations()
+    if USE_GEMINI: callGemini()  [no Pollinations fallback]
+    else: callPollinations()
+  } catch (all fail): getResponse() [offline simpleResponseEngine]
+
+RETURNS: { text: string, positive: boolean }
+
+------------------------------------------------------------------------
+8.11 simpleResponseEngine.ts (5,000 bytes, 178 lines)
+------------------------------------------------------------------------
+Fully offline keyword-matching response engine. Zero network, zero latency.
+Used when ALL AI providers fail. Always succeeds.
+
+TOPIC MATCHING (TOPICS array of {keywords, getResponse}):
+  Greetings: 'hello','hi','hey','good morning','good evening',Arabic greetings
+  Pain:      'pain','hurt','ache','back hurts', Arabic pain words
+  Name:      'your name','who are you', Arabic equivalents
+  How-r-u:   'how are you', Arabic variants
+  Family:    'family','mom','dad', Arabic words
+  Boredom:   'bored','boring', Arabic
+  Tiredness: 'tired','sleep', Arabic
+Each topic has 3-4 randomized response strings via pick() helper.
+
+FALLBACK CLASSIFICATION (no keyword match):
+  isQuestion: question words regex OR ends with ?
+  isPositive: positive word regex (good/great/nice/love/happy/fine/better)
+  isQuestion -> deflect to doctor response
+  isPositive -> generic positive response
+  else       -> generic neutral response
+
+Arabic: keywords include Arabic BUT responses are English-only.
+
+------------------------------------------------------------------------
+8.12 emergencyDetector.ts (1,989 bytes, 56 lines)
+------------------------------------------------------------------------
+CRITICAL SAFETY COMPONENT. Synchronous, no network, runs BEFORE any LLM.
+
+EMERGENCY_PHRASES (complete list):
+  Direct help: 'help','emergency','call a nurse','call the doctor',
+               'call 911','i need help','someone help','help me'
+  Breathing:   "can't breathe",'cannot breathe','hard to breathe',
+               'trouble breathing','chest pain','chest hurts',
+               'heart attack','my heart'
+  Severe pain: 'severe pain','extreme pain','unbearable pain','horrible pain',
+               'i am dying',"i'm dying"
+  Bleeding:    'bleeding',"i'm bleeding",'blood','injured','fell down','i fell'
+  Consciousness: 'feeling faint','going to pass out','i feel dizzy',
+                 'very dizzy','feeling very sick','very sick'
+
+SANITIZATION: toLowerCase + replace punctuation with spaces + collapse whitespace
+DETECTION: string.includes() for each phrase - O(phrases x text_length)
+
+EMERGENCY_RESPONSE (exact TTS message):
+  'I am alerting the hospital staff right now. Help is on the way.'
+  'Please stay calm. You are not alone.'
+
+LIMITATION: Arabic emergency phrases NOT included.
+
+------------------------------------------------------------------------
+8.13 RafeeqFace.tsx (2,523 bytes, 78 lines)
+------------------------------------------------------------------------
+Root face SVG component. Activates all animation loops.
+SVG VIEWBOX: '0 0 240 200'
+
+ANIMATION LOOPS ACTIVATED:
+  useBlink()           - random eye blinking
+  useBreath()          - sine-wave scale oscillation
+  useSpeakingMouth()   - mouth in speaking state
+  useEyeTracking(ref)  - pupils track mouse/touch
+
+VISUAL ELEMENTS:
+  When isListening: 3 concentric neon ring spans, staggered 0/500/1000ms
+    Rings expand outward (listenRing keyframe)
+  When isSpeaking: 5 waveform bar spans, staggered 0/90/180/270/360ms
+  SVG: motion.svg, animate={{scale: breathScale}}, BREATH_SPRING transition
+  Inside SVG: <Eyebrows />, <Eyes />, <Mouth />
+
+ACCESSIBILITY: role='img', aria-label='Rafeeq animated face'
+
+------------------------------------------------------------------------
+8.14 Eyes.tsx / Eyebrows.tsx / Mouth.tsx
+------------------------------------------------------------------------
+
+EYES.TSX:
+  Two SVG circle groups. Centers: Left(75,82), Right(165,82)
+  Each eye: main circle (Framer Motion: r, fillOpacity, scaleX, scaleY, offsetY)
+            pupil (smaller circle, moves with pupilTarget)
+            eyelid (rect slides down: 100%=closed, 0%=open)
+  Data from getExpression(faceState).eye and .eyelid
+  isBlinking=true -> eyelid slides fully down
+
+EYEBROWS.TSX:
+  Two SVG quadratic bezier curve paths.
+  Framer Motion animates: path morphing, rotate, offsetY, opacity
+  Data from getExpression(faceState).eyebrow
+
+MOUTH.TSX:
+  SVG path (bezier curve) for most states, ellipse for 'surprised'
+  mouthOpenness modifies control point Y -> creates lip-sync effect
+  Higher openness = control point moves more = wider mouth
+
+------------------------------------------------------------------------
+8.15 springConfig.ts (1,055 bytes)
+------------------------------------------------------------------------
+Framer Motion spring presets:
+  BREATH_SPRING:     {type:'spring', stiffness:30,  damping:12}  (slow/soft)
+  EXPRESSION_SPRING: {type:'spring', stiffness:280, damping:22}  (snappy)
+  PUPIL_SPRING:      {type:'spring', stiffness:400, damping:35}  (tight/fast)
+  BLINK_TRANSITION:  {duration:0.06}                             (near-instant)
+
+------------------------------------------------------------------------
+8.16 expressionAnimations.ts (4,422 bytes, 130 lines)
+------------------------------------------------------------------------
+Visual shape data for all 8 face states.
+Each ExpressionTarget: eye, eyebrow, eyelid, mouth data.
+
+MOUTH PATH CONVENTION:
+  'M startX startY Q controlX controlY endX endY'
+  Left anchor x=85 y=150 | Right anchor x=155 y=150 | Control x=120 always
+  control y > 150 = smile | = 150 = flat | < 150 = frown
+
+EXPRESSIONS:
+  idle:      r=26 filled | smile (y=168) | neutral brows
+  listening: r=31 filled | light smile (y=162) | brows up +2deg
+  thinking:  scaleX=1.25 scaleY=0.42 (squint) | flat (y=150) | brows -3deg
+             eyelid 30% closed | blink PAUSED
+  speaking:  r=26 filled | mild smile (y=162) | normal brows
+  happy:     r=33 filled (largest) | big smile (y=180) | brows +8deg -6px
+  concerned: r=25 ring only (fillOpacity=0,strokeWidth=5.5) | frown (y=142)
+             brows -6deg | eyelid 5% closed
+  surprised: r=30 ring only strokeWidth=5.5 | oval ellipse mouth
+             brows +12deg -10px (highest)
+  sleeping:  scaleX=1.55 scaleY=0.07 (flat slits) | eyelid 100% closed
+             brows opacity=0 (hidden) | breathing 1.9x slower
+
+------------------------------------------------------------------------
+8.17 useFaceAnimations.ts (4,066 bytes, 111 lines)
+------------------------------------------------------------------------
+Three animation hooks:
+
+useBlink():
+  Random eye blinks every 2500-6000ms
+  Duration: 120ms | PAUSED in 'sleeping' and 'thinking'
+
+useBreath():
+  Sine-wave scale: 1.000 to 1.016
+  Period: 4400ms normal | 8360ms sleeping (1.9x slower)
+  Uses requestAnimationFrame
+
+useSpeakingMouth():
+  Active ONLY in 'speaking' state, resets to 0 otherwise
+  Layered sines for irregular natural motion:
+    raw = 0.38*|sin(t*2.9)| + 0.30*|sin(t*4.3+1.1)| + 0.18*|sin(t*7.7+2.3)|
+  Clamped to [0,1] -> mouthOpenness in faceStore
+  NOTE: Competes with handleWordBoundary during Web Speech word events
+
+------------------------------------------------------------------------
+8.18 useEyeTracking.ts (3,316 bytes, 88 lines)
+------------------------------------------------------------------------
+Converts mouse/touch to normalized pupil targets.
+
+IDLE DRIFT (Lissajous figure-eight):
+  x = sin(t*2*PI)*0.3  |  y = sin(t*4*PI)*0.15
+  Period 6000ms | Starts immediately | Resumes after 3000ms no pointer
+
+POINTER TRACKING:
+  Normalizes relative to face SVG center | Scale factor 0.6 | Clamp [-1,1]
+  After 3000ms inactivity: idle drift resumes
+
+SLEEPING: pointer events ignored when faceState='sleeping'
+
+------------------------------------------------------------------------
+8.19 Dashboard.tsx (19,746 bytes, 315 lines)
+------------------------------------------------------------------------
+Staff clinical dashboard. ALL DATA IS MOCK - no real backend.
+
+MOCK_PATIENTS (5):
+  Eleanor Vance     Rm302 sad    pain=8 Post-op Knee Replacement
+  Arthur Pendelton  Rm105 sleep  pain=2 Pneumonia Observation
+  Sarah Connor      Rm410 happy  pain=1 Routine Maternity
+  James Holden      Rm221 neutral pain=5 Lower Back Trauma
+  Amos Burton       Rm315 happy  pain=3 Appendectomy
+Each has an aiSummary text string of 2-3 sentences.
+
+MOCK_ALERTS (4):
+  CRITICAL: Room 302 - 8/10 back pain (Just now)
+  WARNING:  Room 105 - Nurse assistance (12 mins ago)
+  INFO:     Room 410 - Daily AI summary done (25 mins ago)
+  CRITICAL: Room 221 - Missed medication window (40 mins ago)
+
+PAIN_TREND_DATA: 6 points (08:00->6, 12:00->7, 16:00->9,
+  20:00->8, 00:00->5, 04:00->8)
+  NOTE: Same data shown for ALL patients (see Bug #13)
+
+LAYOUT:
+  Sidebar (w-64 dark): Logo, Nav(Dashboard/Patients/Alerts/Settings),
+                       Doctor profile (Dr. Sarah Jenkins, Lead Physician)
+  Main:
+    Header: 'Overview' + live date
+    4 summary cards: Active Patients(24), Critical Alerts(2),
+                     Avg Pain(4.2), AI Interactions(142)
+    Patient table (2/3 width): name, room, mood, pain bar, last chat
+    Live Alerts feed (1/3 width): color-coded severity cards
+
+PATIENT DETAIL MODAL:
+  Opens on ChevronRight click | Closes on X or backdrop click
+  Shows: name, mood icon, room, condition, pain level (large)
+  AI Daily Summary box
+  Pain Trend LineChart (Recharts)
+  Action buttons (no logic implemented yet)
+
+SUB-COMPONENTS: NavItem, SummaryCard
+
+------------------------------------------------------------------------
+8.20 EmergencyOverlay.tsx (3,056 bytes, 90 lines)
+------------------------------------------------------------------------
+Full-screen overlay when isEmergency=true. RED color scheme (not neon cyan).
+Designed to be visible and readable from several feet away.
+
+ACCESSIBILITY:
+  role='alertdialog', aria-modal='true', aria-live='assertive'
+  Dismiss button id='emergency-dismiss-btn'
+
+ANIMATIONS: overlay fade 0->1 (200ms) | card spring from scale 0.9 y=20
+  Alert icon: infinite pulse scale 1->1.12->1 (1s period)
+
+CONTENT:
+  Warning triangle SVG (pulsing)
+  'Help is on the way' heading
+  'I'm alerting hospital staff... Stay calm...'
+  'A nurse or doctor will arrive shortly.'
+  'False Alarm - I'm OK' button -> dismissEmergency()
+
+------------------------------------------------------------------------
+8.21 ParticleBackground.tsx (3,744 bytes, 129 lines)
+------------------------------------------------------------------------
+Canvas 2D animated background. 45 drifting particles + connection lines.
+position:fixed, inset:0, pointer-events:none, aria-hidden.
+
+PARTICLE PROPERTIES (45 per screen):
+  Velocity: vx/vy max +/-0.06 (very slow drift)
+  Size: 0.8-2.8px | Alpha: 0.04-0.29 (oscillates)
+  Hue: 185-210 (cyan/teal range)
+  Wraps around screen edges with 10px margin
+
+PER FRAME:
+  clearRect | update position + alpha | draw radial gradient glow (5x size)
+  draw core dot | draw connection lines for pairs within 120px distance
+  Line alpha: 0.025 * (1 - dist/120)
+
+------------------------------------------------------------------------
+8.22 AudioVisualizer.tsx (3,438 bytes)
+------------------------------------------------------------------------
+Animated bar chart representing audio activity.
+Shows active bars when isListening or isSpeaking, resting otherwise.
+Different animation patterns for listening vs speaking states.
+
+------------------------------------------------------------------------
+8.23 SplashOverlay.tsx (1,763 bytes)
+------------------------------------------------------------------------
+First-load splash screen with Rafeeq logo.
+Fades out automatically after app initialization.
+
+------------------------------------------------------------------------
+8.24 StatusBar.tsx (5,861 bytes, 137 lines)
+------------------------------------------------------------------------
+Developer control panel. ONLY shown when VITE_SHOW_DEV_TOOLS=true or DEV mode.
+
+KEYBOARD SHORTCUTS:
+  1=idle  2=listening  3=thinking  4=speaking
+  5=happy 6=concerned  7=surprised  8=sleeping
+
+Each button: mini inline SVG face icon + label + keyboard shortcut (kbd)
+Icons are hand-drawn SVG: 40x32 viewBox, two circles (eyes) + path (mouth)
+
+------------------------------------------------------------------------
+8.25 TranscriptDisplay.tsx (3,514 bytes, 124 lines)
+------------------------------------------------------------------------
+Conversation chat bubbles + live interim speech bar.
+
+TYPEWRITERTEXT component:
+  Animates text char by char at 25ms intervals
+  Shows blinking cursor while animating
+  Active only on last AI response while speaking
+
+CONVERSATIONHISTORY component:
+  All messages as motion.div bubbles (slide in from below)
+  Patient: right-aligned style | Assistant: left-aligned style
+  Last assistant msg gets TypewriterText treatment
+  Auto-scrolls to bottom on new messages
+
+TRANSCRIPTDISPLAY (root):
+  Shows ConversationHistory when conversation.length > 0
+  Shows floating interim bar when isListening AND interim exists
+  InterimBar: AnimatePresence, role='status', aria-live='polite'
+
+------------------------------------------------------------------------
+8.26 PrivacyIndicator.tsx (1,398 bytes)
+------------------------------------------------------------------------
+Fixed privacy badge displayed when microphone is active.
+Pulsing red/orange dot + 'Mic Active' text.
+Hidden (aria-hidden) when isActive=false.
+
+------------------------------------------------------------------------
+8.27 soundEffects.ts (2,326 bytes, 77 lines)
+------------------------------------------------------------------------
+Web Audio API oscillator sound effects. Singleton AudioContext.
+Philosophy: gentle, warm, non-alarming tones for hospital environments.
+All volumes 0.025-0.06 with exponential decay.
+
+SOUNDS:
+  playStartSound():     C5(523Hz) -> E5(659Hz) sine | ascending, mic on
+  playStopSound():      E5(659Hz) -> C5(523Hz) sine | descending, mic off
+  playErrorSound():     E4(330Hz) -> C4(262Hz) triangle | soft error
+  playEmergencySound(): A5(880Hz)+E5(660Hz) square x3 | urgent, distinct
+  playThinkingSound():  A4(440Hz) sine | barely audible subtle tap
+
+------------------------------------------------------------------------
+8.28 tokens.css / global.css / animations.css
+------------------------------------------------------------------------
+
+TOKENS.CSS - CSS Custom Properties:
+  Backgrounds: --color-bg-base:#000000 (pure black), surface:#080c12,
+               elevated:#0d1520, glass:rgba(8,12,18,0.75)
+  Neon:        --color-neon:#00e5f5 (THE single face color)
+               --color-neon-dim: rgba(0,229,245,0.5)
+               --color-neon-glow: rgba(0,229,245,0.35)
+  Accents:     --color-accent-primary:#1a8cff (blue UI elements)
+               --color-accent-warning:#ff9b21 (orange)
+               --color-accent-danger:#ff4566 (red emergency)
+  Text:        primary rgba(255,255,255,0.92), secondary 0.55, muted 0.30
+  Font:        --font-sans: IBM Plex Sans, IBM Plex Sans Arabic, system-ui
+  Sizes:       xs=0.75rem, sm=0.875rem, base=1rem, lg=1.125rem, xl=1.25rem
+  Weights:     light=300, regular=400, medium=500, semibold=600
+  Spacing:     8pt scale: space-1(0.25rem) to space-16(4rem)
+  Radius:      sm=0.375rem, md=0.625rem, lg=1rem, xl=1.5rem, full=9999px
+  Z-index:     base=0, above=10, overlay=100, emergency=9999
+  Layout:      --face-size: min(420px, 85vw, 65vh)
+
+GLOBAL.CSS:
+  @import tailwindcss | @import tokens.css
+  Universal box-sizing:border-box, margin/padding reset
+  Body: IBM Plex Sans, #000000 bg, antialiased
+  Custom scrollbar: 4px, neon cyan thumb
+  .sr-only: visually hidden, screen-reader accessible
+  .glass-card: backdrop-blur + rgba background + subtle border
+  :focus-visible: 2px neon outline (keyboard navigation)
+
+ANIMATIONS.CSS (keyframes):
+  breatheGlow:  opacity/scale 0%-50%-100% (ambient glow breath)
+  listenRing:   scale 1->1.6, opacity 0.8->0 (expanding rings)
+  thinkOrbit:   rotate+translateX (orbiting thinking dot)
+  dangerPulse:  box-shadow 0->20px->0 red rgba (emergency pulse)
+  fadeIn:       opacity 0->1, translateY 8px->0 (entry)
+  statusPulse:  opacity 1->0.4 (status badge blink)
+  scanLine:     top 10%->90% (scan line for thinking state)
+
+
+================================================================================
+9. VOICE PIPELINE - FULL FLOW DIAGRAM
+================================================================================
+
+User presses MicButton (or auto-restart in continuous mode)
+  |
+  v
+useVoiceOrchestrator.toggleListening()
+isActiveRef.current = true
+  |
+  v
+useSpeechRecognition.startListening() -> SpeechRecognition.start()
+  |
+  v
+[onstart event fires]
+isListening=true -> faceState='listening' + playStartSound()
+  |
+  v
+[User speaks - interim results stream in]
+TranscriptDisplay shows live interim text in floating bar
+  |
+  v
+[onresult - isFinal=true]
+transcript = 'the user spoke this text'
+interim = ''
+  |
+  v
+[onend fires] -> isListening=false
+  |
+  v
+useEffect sees new transcript -> setIsMicActive(false)
+addMessage({role:'patient', content:transcript})
+  |
+  v
+detectEmergency(transcript)  [SYNCHRONOUS - zero latency, no network]
+  |
+  +-------YES-----------+--------NO----------+
+  |                                          |
+  v                                          v
+setIsEmergency(true)              setFaceState('thinking')
+setFaceState('concerned')         playThinkingSound()
+playEmergencySound()                         |
+EmergencyOverlay appears                     v
+speak(EMERGENCY_RESPONSE)         getGeminiResponse(transcript, history)
+RETURN                            [ASYNC: 500ms to 3s typical]
+                                             |
+                          +---Zhipu OK------>|
+                          |---Zhipu FAIL---> callPollinations()
+                          |                  |---Poll FAIL-> getResponse()
+                                             |
+                                    { text, positive }
+                                             |
+                               setLastResponse(text)
+                               addMessage({role:'assistant',...})
+                                             |
+                                  positive=true?
+                                  /           \
+                               YES             NO
+                                |               |
+                         setFaceState      speak(text)
+                           ('happy')       immediately
+                         wait 400ms
+                         speak(text)
+                                |
+                                v
+useSpeechSynthesis.speak(text)
+  ELEVENLABS_KEY set? -> YES: POST ElevenLabs, decode audio,
+                              AnalyserNode drives mouth (real lip-sync)
+                    -> NO:  SpeechSynthesisUtterance,
+                            word boundary events drive mouth
+  setIsSpeaking(true) -> setFaceState('speaking')
+  [speech plays, mouth moves]
+  |
+  v
+Speech ends -> setIsSpeaking(false)
+300ms later: setFaceState('idle'), setMouthOpenness(0)
+  |
+  v
+[if continuous mode and no error]
+600ms wait -> startListening() [LOOP BACK TO TOP]
+
+
+================================================================================
+10. FACE STATE MACHINE
+================================================================================
+
+IDLE
+  Eyes: filled r=26 | Mouth: smile (control y=168)
+  Brows: neutral | Rings/Waveform: none
+  Blink: active (2.5-6s) | Eye track: active
+  Label: 'Tap the mic to speak'
+
+LISTENING
+  Eyes: filled r=31 (wider/attentive) | Mouth: slight smile (y=162)
+  Brows: +2deg raised | 3 expanding neon rings (0/500/1000ms staggered)
+  Blink: active | Eye track: active
+  Label: 'I'm listening...'
+
+THINKING
+  Eyes: squint scaleX=1.25 scaleY=0.42 | Eyelid: 30% closed
+  Mouth: flat (y=150) | Brows: furrowed -3deg
+  Blink: PAUSED | Eye track: active
+  Label: 'Let me think...'
+
+SPEAKING
+  Eyes: filled r=26 | Mouth: mouthOpenness controlled (lip-sync)
+  5 waveform bars below face (0/90/180/270/360ms staggered)
+  Blink: active | Eye track: active
+  Label: 'Speaking...'
+
+HAPPY
+  Eyes: filled r=33 (largest) | Mouth: big smile (y=180)
+  Brows: +8deg raised, -6px offset (highest normal state)
+  Blink: active | Eye track: active
+  Label: 'That's wonderful!'
+
+CONCERNED
+  Eyes: hollow rings (fillOpacity=0, strokeWidth=5.5) r=25
+  Mouth: frown (y=142) | Brows: furrowed -6deg | Eyelid: 5% closed
+  Blink: active | Eye track: active
+  Label: 'I'm here for you.'
+
+SURPRISED
+  Eyes: hollow rings strokeWidth=5.5 r=30 | Mouth: oval ellipse
+  Brows: +12deg raised, -10px offset (highest)
+  Blink: active | Eye track: active
+  Label: 'Oh! Tell me more.'
+
+SLEEPING
+  Eyes: flat slits scaleX=1.55 scaleY=0.07 | Eyelid: 100% closed
+  Mouth: small smile (y=158) | Brows: hidden (opacity=0)
+  Breath: 1.9x slower | Blink: PAUSED | Eye track: PAUSED
+  Label: 'Resting quietly...'
+
+TRANSITIONS: EXPRESSION_SPRING (stiffness:280, damping:22)
+
+
+================================================================================
+11. LLM ENGINE ROUTING LOGIC
+================================================================================
+
+MODULE-LOAD FLAGS:
+  USE_OPENAI = LLM_API_KEY.length>0 AND LLM_BASE_URL.length>0
+  USE_GEMINI = !USE_OPENAI AND GEMINI_KEY.startsWith('AIzaSy') AND len>30
+  CURRENT:    USE_OPENAI=true, USE_GEMINI=false
+
+EFFECTIVE ROUTING (current config):
+  1st: callOpenAI (Zhipu GLM-4-Flash)
+    POST https://open.bigmodel.cn/api/paas/v4/chat/completions
+    On failure -> 2nd attempt
+  2nd: callPollinations (free, no key)
+    POST /api/pollinations/ [Vite proxy -> text.pollinations.ai]
+    On failure -> 3rd attempt
+  3rd: getResponse() [offline simpleResponseEngine, always succeeds]
+
+POLLINATIONS PROXY NOTE:
+  The Vite proxy ONLY exists during 'npm run dev'.
+  Production builds do NOT have this proxy.
+  Pollinations from production may fail due to CORS.
+  If Zhipu fails in production: final backup is offline engine only.
+
+JSON OUTPUT CONTRACT:
+  LLM is instructed to return: { 'response': '...', 'positive': true/false }
+  'positive'=true -> faceState becomes 'happy'
+  'positive'=false -> faceState stays neutral on response
+
+
+================================================================================
+12. CSS DESIGN SYSTEM
+================================================================================
+
+COLOR PHILOSOPHY:
+  Face uses ONE color: neon cyan (#00e5f5)
+  Background: pure black (#000000) to maximize neon contrast
+  Emergency overlay: RED (#ff4566) - deliberate visual break to signal urgency
+
+TYPOGRAPHY:
+  IBM Plex Sans (Latin) paired with IBM Plex Sans Arabic for bilingual support
+  Humanist sans-serif by IBM, designed for screen readability
+  Loaded from Google Fonts, weights 300/400/500/600
+
+CSS MODULES (scoped class names auto-generated at build time):
+  App.module.css, RafeeqFace.module.css, EmergencyOverlay.module.css,
+  MicButton.module.css, PrivacyIndicator.module.css,
+  TranscriptDisplay.module.css, SplashOverlay.module.css, StatusBar.module.css
+
+TAILWIND IN DASHBOARD:
+  Dashboard.tsx uses Tailwind utilities inline for rapid development.
+  Neon glows use drop-shadow utilities with custom rgba values.
+  Glassmorphism uses backdrop-blur + bg-slate-900/40.
+
+
+================================================================================
+13. BUILD CONFIGURATION
+================================================================================
+
+vite.config.ts:
+  plugins: [react()]
+  server.proxy: '/api/pollinations' -> 'https://text.pollinations.ai'
+  (dev only; does not exist in production builds)
+
+tsconfig.app.json:
+  target: ES2020 | lib: ES2020, DOM, DOM.Iterable
+  strict: true | jsx: react-jsx | moduleResolution: bundler
+
+postcss.config.js: @tailwindcss/postcss + autoprefixer
+
+tailwind.config.js: content: src/**/*.{ts,tsx}
+
+SCRIPTS:
+  npm run dev      vite                 (dev server, port 5173)
+  npm run build    tsc -b && vite build  (compile + bundle -> dist/)
+  npm run lint     oxlint                (run linter)
+  npm run preview  vite preview          (preview production build)
+
+
+================================================================================
+14. FEATURES LIST
+================================================================================
+
+COMPANION MODE - IMPLEMENTED:
+  [x] Animated AI face: 8 distinct expressions via SVG + Framer Motion
+  [x] Pupils follow mouse/touch cursor (spring physics)
+  [x] Automatic random eye blinking (2.5-6s intervals)
+  [x] Subtle sine-wave breathing animation on face SVG
+  [x] Canvas particle background (45 particles, connection lines)
+  [x] Voice-first: tap mic, speak naturally
+  [x] Continuous listening mode (one press to start, one to stop)
+  [x] Live interim transcript (real-time words as you speak)
+  [x] Chat bubble conversation history with slide-in animations
+  [x] Typewriter effect on AI responses synced to speech
+  [x] Lip-sync: mouth driven by audio frequencies or word events
+  [x] Audio visualizer bars (mic/TTS activity)
+  [x] Sound effects: mic start/stop, error, emergency, thinking
+  [x] Emergency keyword detection (synchronous, pre-LLM)
+  [x] Emergency full-screen overlay with pulsing red alert icon
+  [x] 'False Alarm' dismissal button on emergency overlay
+  [x] Privacy 'Mic Active' badge when microphone is recording
+  [x] Error messages for permission denied, no mic, network errors
+  [x] Unsupported browser message (Firefox)
+  [x] Bilingual: English primary, Arabic auto-detected
+  [x] Splash screen on first load
+  [x] 3-tier LLM fallback: Zhipu -> Pollinations -> offline engine
+  [x] Offline fallback always works (no network required)
+  [x] Developer face state preview panel (keys 1-8, hidden in prod)
+  [x] Toggle between Companion and Staff Dashboard
+
+STAFF DASHBOARD - IMPLEMENTED:
+  [x] 4 summary cards with neon glow icons
+  [x] Patient status table (mood, pain bars, last chat time)
+  [x] Patient detail modal on row expand
+  [x] AI Daily Summary text per patient
+  [x] 24h Pain Trend LineChart (Recharts)
+  [x] Live Alerts feed (critical/warning/info severity)
+  [x] Sidebar navigation with active state
+  [x] Alert count badge on sidebar
+  [x] Doctor profile in sidebar
+  [x] Responsive grid layout
+
+NOT YET IMPLEMENTED:
+  [ ] Real backend (all dashboard data is mock/static)
+  [ ] Real emergency notification to hospital staff
+  [ ] Patients / Alerts / Settings tab content
+  [ ] Persistent conversation history (clears on refresh)
+  [ ] Arabic speech recognition (STT is English-only)
+  [ ] Arabic emergency phrases in detector
+  [ ] ElevenLabs key (using browser voice currently)
+  [ ] User authentication / login system
+  [ ] Database integration
+  [ ] Real-time multi-patient monitoring
+  [ ] Per-patient pain trend data
+
+
+================================================================================
+15. POTENTIAL BUGS AND KNOWN ISSUES
+================================================================================
+
+BUG 1: POLLINATIONS PROXY MISSING IN PRODUCTION
+Severity: HIGH
+The Vite proxy only exists during 'npm run dev'. Production builds have
+no proxy. Direct calls to text.pollinations.ai may fail due to CORS.
+Impact: If Zhipu fails in production, Pollinations fallback also fails.
+Only offline simpleResponseEngine remains.
+Fix: Deploy a backend proxy endpoint server-side.
+
+BUG 2: EXPOSED API KEY IN BROWSER BUNDLE
+Severity: HIGH (Security)
+VITE_* variables are compiled into client-side JS. The Zhipu key is
+visible to anyone who inspects the built JS files or Network tab.
+Impact: Key theft, unauthorized usage, billing charges.
+Fix: Move AI calls to a backend proxy. Never put paid keys in VITE_* vars.
+
+BUG 3: ARABIC EMERGENCY DETECTION MISSING
+Severity: HIGH (Patient Safety)
+emergencyDetector.ts only has English phrases. Arabic speakers saying
+emergency words will NOT trigger the emergency workflow.
+Impact: Emergency not detected for Arabic-speaking patients.
+Fix: Add Arabic emergency phrase translations to EMERGENCY_PHRASES array.
+
+BUG 4: STRICTMODE DOUBLE-RENDER SIDE EFFECTS
+Severity: MEDIUM (Development Only)
+React 19's StrictMode renders components twice in dev. Animation hooks
+and sound effects may initialize twice.
+Impact: Development only. Not present in production builds.
+Fix: Ensure all useEffect cleanups cancel RAF loops, timers, and audio.
+
+BUG 5: SPEECH RECOGNITION LANGUAGE FIXED TO ENGLISH
+Severity: MEDIUM
+useSpeechRecognition.ts uses lang='en-US' always. Even though TTS
+auto-detects Arabic, mic transcription is English-only.
+Impact: Arabic patients cannot use voice input effectively.
+Fix: Add language selection or detect intent; set rec.lang='ar-SA'.
+
+BUG 6: MOUTH ANIMATION CONFLICT
+Severity: LOW-MEDIUM
+useSpeakingMouth (RAF loop) and handleWordBoundary (word events) both
+write to mouthOpenness during 'speaking' state. ElevenLabs AnalyserNode
+is a third writer. All three compete.
+Impact: Jittery or inconsistent mouth animation.
+Fix: Only run one mouth driver at a time (feature flag per provider).
+
+BUG 7: NO POLLINATIONS FALLBACK FOR GEMINI BRANCH
+Severity: LOW
+If user configures Gemini and it fails, it throws directly to the outer
+catch (offline fallback) without trying Pollinations first.
+Fix: Add try/catch around callGemini() -> callPollinations() fallback.
+
+BUG 8: CONVERSATION HISTORY NOT PERSISTED
+Severity: LOW
+voiceStore.conversation is in-memory only. Page refresh clears history.
+Impact: No session continuity.
+Fix: Zustand persist middleware with localStorage.
+
+BUG 9: DASHBOARD TABS ARE NAVIGATION-ONLY
+Severity: LOW (UX)
+Patients, Alerts, Settings tabs update activeTab state but no content
+renders for them. You always see the Overview content.
+Fix: Add conditional content sections based on activeTab value.
+
+BUG 10: TYPEWRITERTEXT INTERVAL ON RAPID UNMOUNT
+Severity: LOW
+If parent unmounts rapidly (switching to Dashboard mid-speech), the
+setInterval cleanup runs but may fire one final state update.
+Impact: Possible React warning about unmounted component state update.
+Fix: Use mounted ref pattern to guard state updates.
+
+BUG 11: AUDIOCONTEXT BLOCKED BY BROWSER AUTOPLAY POLICY
+Severity: LOW
+Some browsers block AudioContext until user interaction. Code checks for
+'suspended' state but may still fail on strict browsers.
+Impact: No sound effects on very first interaction.
+Fix: Resume AudioContext inside first confirmed user gesture handler.
+
+BUG 12: ELEVENLABS CONCURRENT REQUEST RACE
+Severity: LOW
+Very rapid speech may start two ElevenLabs requests nearly simultaneously.
+AbortController cancels previous but there is a small race window.
+Impact: Brief audio overlap or delayed lip-sync.
+Fix: Ensure abort fires before new fetch begins (not just 'around same time').
+
+BUG 13: PAIN TREND CHART SAME FOR ALL PATIENTS
+Severity: LOW (UX/Accuracy)
+PAIN_TREND_DATA is a single constant. All patient modals show identical chart.
+Impact: Misleading data in clinical context.
+Fix: Add individual trend data arrays to each patient in MOCK_PATIENTS.
+
+
+================================================================================
+16. SECURITY NOTES
+================================================================================
+
+1. API KEYS IN CLIENT BUNDLE
+   All VITE_* vars compiled into client JS. Zhipu key visible in devtools.
+   Action: Use backend proxy for production. Never put paid keys in VITE_*.
+
+2. NO AUTHENTICATION
+   No login or session management. Anyone with the URL can access everything.
+   Action: Implement role-based auth before hospital deployment.
+
+3. PATIENT PRIVACY / HIPAA
+   Voice audio text sent to third-party APIs (Zhipu, Pollinations, ElevenLabs)
+   over HTTPS. No persistent patient voice storage in current implementation.
+   HIPAA compliance requires Data Processing Agreements with these providers.
+   Action: Legal review and DPAs before any real medical use.
+
+4. HTTPS REQUIRED IN PRODUCTION
+   Web Speech API requires HTTPS. http:// silently disables microphone.
+   Action: Ensure SSL/TLS certificate on deployment server.
+
+5. CORS EXPOSURE
+   All AI calls made directly from browser. API credentials visible in
+   browser Network tab. CORS relies on third-party service policies.
+   Action: Move all AI calls to server-side proxy.
+
+
+================================================================================
+17. DEPLOYMENT NOTES
+================================================================================
+
+BUILD:
+  npm run build -> ./dist/ (static files)
+
+SERVE:
+  Any static file server: nginx, Apache, Netlify, Vercel, GitHub Pages
+  Configure server to route all requests to index.html (SPA routing)
+  nginx example: try_files $uri $uri/ /index.html;
+
+ENVIRONMENT VARIABLES FOR PRODUCTION:
+  Set via hosting platform dashboard (NOT in committed .env files)
+  VITE_LLM_API_KEY, VITE_LLM_BASE_URL, VITE_LLM_MODEL
+  VITE_GEMINI_API_KEY, VITE_ELEVENLABS_API_KEY, VITE_ELEVENLABS_VOICE_ID
+  VITE_SHOW_DEV_TOOLS=false
+
+POLLINATIONS IN PRODUCTION:
+  Vite proxy does NOT exist in production builds.
+  Pollinations may work with direct browser calls (they support CORS)
+  but is not guaranteed. Use backend proxy for reliability.
+
+BROWSER RECOMMENDATION:
+  Best:            Google Chrome or Microsoft Edge (full Web Speech API)
+  OK:              Safari macOS/iOS (Web Speech with some limits)
+  NOT SUPPORTED:   Firefox (voice features completely unavailable)
+
+TABLET KIOSK DEPLOYMENT (intended use case):
+  Face sized for tablets: min(420px, 85vw, 65vh)
+  Designed for full-screen kiosk in patient rooms
+  Options:
+    Chrome kiosk mode: chrome.exe --kiosk http://yourapp.com
+    iPad Guided Access: Settings -> Accessibility -> Guided Access
+    Android MDM kiosk mode software
+
+PERFORMANCE:
+  2-4 concurrent requestAnimationFrame loops during normal use
+  (ParticleBackground, useBreath, useSpeakingMouth, useEyeTracking)
+  All properly cleaned up in useEffect return functions.
+  Tested targeting 60fps on low-end tablets.
+
+DEFAULT PORT: 5173 (Vite dev)
+  Change: vite --port 3000 OR server: { port: 3000 } in vite.config.ts
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================
+Total source files documented: ~35 files
+Total project lines of code: ~3,500 (excluding node_modules)
+Project directory: kenz project
+App name: Rafeeq - AI Patient Companion
+Primary users: Hospitalized children and elderly patients
+Secondary users: Hospital staff (dashboard view)
+Dev stage: Phase 2 - Voice Pipeline Active (functional prototype)
+================================================================================

@@ -1,0 +1,93 @@
+/* ============================================================
+   RafeeqFace — CSS Module (Neon Minimal Design)
+   ============================================================ */
+
+/* --- Face wrapper — centers everything --- */
+.wrapper {
+  position: relative;
+  width: var(--face-size);
+  height: var(--face-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- The SVG itself — carries the neon glow filter --- */
+.faceSvg {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: var(--z-above);
+  /* Neon bloom effect — stacked drop-shadows create the glow spread */
+  filter:
+    drop-shadow(0 0 6px #00e5f5)
+    drop-shadow(0 0 18px #00e5f5)
+    drop-shadow(0 0 40px rgba(0, 229, 245, 0.55))
+    drop-shadow(0 0 70px rgba(0, 180, 200, 0.3));
+  overflow: visible;
+}
+
+/* --- Listening pulse rings --- */
+.listenRings {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: calc(var(--z-above) - 1);
+  pointer-events: none;
+}
+
+.ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 1.5px solid #00e5f5;
+  box-shadow: 0 0 8px #00e5f5, inset 0 0 8px rgba(0, 229, 245, 0.1);
+  animation: listenRing 1.8s ease-out infinite;
+  box-sizing: border-box;
+}
+
+/* --- Speaking waveform bars --- */
+.waveform {
+  position: absolute;
+  bottom: -42px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+  z-index: var(--z-above);
+  pointer-events: none;
+  /* Apply neon glow to waveform bars too */
+  filter:
+    drop-shadow(0 0 4px #00e5f5)
+    drop-shadow(0 0 10px rgba(0, 229, 245, 0.5));
+}
+
+.waveBar {
+  display: block;
+  width: 4px;
+  background: #00e5f5;
+  border-radius: 2px;
+  animation: waveBarPulse 0.55s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+.waveBar:nth-child(1) { height: 10px; }
+.waveBar:nth-child(2) { height: 18px; }
+.waveBar:nth-child(3) { height: 26px; }
+.waveBar:nth-child(4) { height: 18px; }
+.waveBar:nth-child(5) { height: 10px; }
+
+/* --- Keyframes --- */
+@keyframes listenRing {
+  0%   { transform: scale(0.85); opacity: 0.9; }
+  100% { transform: scale(1.55); opacity: 0;   }
+}
+
+@keyframes waveBarPulse {
+  from { transform: scaleY(0.35); opacity: 0.6; }
+  to   { transform: scaleY(1.00); opacity: 1.0; }
+}

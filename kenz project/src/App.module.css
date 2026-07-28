@@ -1,0 +1,203 @@
+/* ============================================================
+   App — CSS Module
+   ============================================================ */
+
+/* --- Header --- */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  animation: fadeIn 0.5s ease both;
+}
+
+.logoMark {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 229, 245, 0.04);
+  border: 1px solid rgba(0, 229, 245, 0.28);
+  box-shadow:
+    0 0 14px rgba(0, 229, 245, 0.14),
+    inset 0 0 12px rgba(0, 229, 245, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  font-weight: var(--font-weight-semibold);
+  color: rgba(0, 229, 245, 0.85);
+  flex-shrink: 0;
+}
+
+.titleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 0.68rem;
+  color: rgba(0, 229, 245, 0.42);
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* --- Face Stage --- */
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  flex: 1;
+  justify-content: center;
+  animation: fadeIn 0.6s 0.1s ease both;
+}
+
+.stateLabel {
+  font-size: 0.68rem;
+  color: rgba(0, 229, 245, 0.38);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: 0.12em;
+  text-align: center;
+  margin: 0;
+  min-height: 1.4em;
+  animation: fadeIn 0.35s ease both;
+  text-transform: uppercase;
+}
+
+/* --- Transcript region --- */
+.transcriptRegion {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 560px;
+  min-height: 60px;
+  animation: fadeIn 0.7s 0.15s ease both;
+}
+
+/* --- Voice controls section --- */
+.voiceSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  animation: fadeIn 0.7s 0.2s ease both;
+}
+
+.errorMsg {
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-danger);
+  text-align: center;
+  margin: 0;
+  max-width: 320px;
+  line-height: var(--line-height-normal);
+}
+
+.unsupportedMsg {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 0;
+  max-width: 280px;
+  line-height: var(--line-height-normal);
+}
+
+/* --- Footer --- */
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 640px;
+  animation: fadeIn 0.8s 0.3s ease both;
+}
+
+.devNote {
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.15);
+  margin: 0;
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* --- Ambient dynamic glow behind the face --- */
+.ambientGlow {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: min(600px, 90vw);
+  height: min(600px, 90vw);
+  transform: translate(-50%, -55%);
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  transition: background 0.8s ease, box-shadow 0.8s ease;
+}
+
+.ambientGlow[data-state="idle"] {
+  background: radial-gradient(circle, rgba(0, 229, 245, 0.08) 0%, transparent 70%);
+  box-shadow: 0 0 120px rgba(0, 229, 245, 0.06);
+}
+.ambientGlow[data-state="listening"] {
+  background: radial-gradient(circle, rgba(0, 229, 245, 0.15) 0%, transparent 70%);
+  box-shadow: 0 0 180px rgba(0, 229, 245, 0.12);
+}
+.ambientGlow[data-state="thinking"] {
+  background: radial-gradient(circle, rgba(255, 155, 33, 0.10) 0%, transparent 70%);
+  box-shadow: 0 0 140px rgba(255, 155, 33, 0.08);
+}
+.ambientGlow[data-state="speaking"] {
+  background: radial-gradient(circle, rgba(0, 229, 245, 0.12) 0%, transparent 70%);
+  box-shadow: 0 0 160px rgba(0, 229, 245, 0.10);
+}
+.ambientGlow[data-state="happy"] {
+  background: radial-gradient(circle, rgba(255, 105, 180, 0.12) 0%, transparent 70%);
+  box-shadow: 0 0 200px rgba(255, 105, 180, 0.10);
+}
+.ambientGlow[data-state="concerned"] {
+  background: radial-gradient(circle, rgba(255, 155, 33, 0.12) 0%, transparent 70%);
+  box-shadow: 0 0 160px rgba(255, 155, 33, 0.10);
+}
+.ambientGlow[data-state="surprised"] {
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.10) 0%, transparent 70%);
+  box-shadow: 0 0 140px rgba(255, 215, 0, 0.08);
+}
+.ambientGlow[data-state="sleeping"] {
+  background: radial-gradient(circle, rgba(100, 120, 255, 0.05) 0%, transparent 70%);
+  box-shadow: 0 0 80px rgba(100, 120, 255, 0.04);
+}
+
+/* Make sure main content renders above background */
+.main {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4) var(--space-5);
+}
+
+/* --- Shared animation --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Responsive --- */
+@media (max-width: 480px) {
+  .main { gap: var(--space-4); padding: var(--space-4) var(--space-3); }
+  .title { font-size: var(--font-size-lg); }
+}

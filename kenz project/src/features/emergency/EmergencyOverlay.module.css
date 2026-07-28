@@ -1,0 +1,114 @@
+/* ============================================================
+   EmergencyOverlay — CSS Module
+   Full-screen alert. Calm urgency — red accent without strobe.
+   ============================================================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-emergency);
+  background: rgba(0, 0, 0, 0.94);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-5);
+  max-width: 460px;
+  width: 100%;
+  padding: var(--space-10) var(--space-8);
+  background: rgba(12, 4, 4, 0.97);
+  border: 1px solid rgba(220, 55, 55, 0.45);
+  border-radius: var(--radius-2xl);
+  text-align: center;
+  box-shadow:
+    0 0 0 1px rgba(220, 55, 55, 0.12),
+    0 0 60px rgba(200, 40, 40, 0.22),
+    0 32px 80px rgba(0, 0, 0, 0.7);
+  animation: softPulse 3s ease-in-out infinite;
+}
+
+.alertIcon {
+  color: #e05555;
+  opacity: 0.92;
+}
+
+.title {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: rgba(245, 180, 180, 0.95);
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: var(--line-height-tight);
+}
+
+.subtitle {
+  font-size: var(--font-size-base);
+  color: rgba(255, 210, 210, 0.7);
+  margin: 0;
+  line-height: var(--line-height-normal);
+  font-weight: var(--font-weight-light);
+}
+
+.divider {
+  width: 48px;
+  height: 1px;
+  background: rgba(220, 55, 55, 0.2);
+}
+
+.instruction {
+  font-size: var(--font-size-sm);
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0;
+  line-height: var(--line-height-normal);
+}
+
+.dismissBtn {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-7);
+  background: transparent;
+  border: 1px solid rgba(220, 55, 55, 0.25);
+  border-radius: var(--radius-full);
+  color: rgba(220, 140, 140, 0.6);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition:
+    background  var(--transition-base),
+    border-color var(--transition-base),
+    color       var(--transition-base);
+}
+
+.dismissBtn:hover {
+  background: rgba(220, 55, 55, 0.08);
+  border-color: rgba(220, 55, 55, 0.45);
+  color: rgba(245, 180, 180, 0.85);
+}
+
+.dismissBtn:active {
+  transform: scale(0.97);
+}
+
+@keyframes softPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(220, 55, 55, 0.12),
+      0 0 60px rgba(200, 40, 40, 0.22),
+      0 32px 80px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(220, 55, 55, 0.22),
+      0 0 80px rgba(200, 40, 40, 0.32),
+      0 32px 80px rgba(0, 0, 0, 0.7);
+  }
+}
